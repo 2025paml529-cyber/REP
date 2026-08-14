@@ -53,54 +53,71 @@ This project is designed to:
 ```text
 REP/
 ├── README.md
+├── .gitignore
 ├── requirements.txt
 ├── check_imports.py
 ├── data/
 │   ├── NYC_Train.csv
-│   └── NYC_Test.csv
+│   ├── NYC_Test.csv
+│   └── raw/
+│       └── NYC_Train_raw.csv
+├── feature_store/
+│   └── feature_store.db
+├── features/
+│   ├── build_feature.py
+│   └── build_feature1.py
 ├── model_store/
 │   ├── feature_columns.json
 │   ├── rf_model.pkl
 │   ├── feature_encoder.pkl
 │   └── target_encoder.pkl
-├── training/
-│   └── train_model.py
 ├── serving/
 │   └── api.py
-└── ui/
-    └── app.py
+├── training/
+│   ├── train_model.py
+│   ├── train_model_from_store.py
+│   └── mlflow_train_model.py
+├── ui/
+│   └── app.py
+├── validation/
+│   └── validate_data.py
+└── .venv-1/
 ```
 
 ### Folder responsibilities
 
-- `data/`: Input training and test datasets.
-- `training/`: Data preparation, model training, evaluation, and artifact generation.
+- `data/`: Raw and processed project datasets.
+- `feature_store/`: SQLite feature store containing the model feature table.
+- `features/`: Centralized feature-engineering module used as the single source of truth.
+- `training/`: Model-training scripts, including the feature-store training version and the MLflow-tracked version.
 - `model_store/`: Serialized model, encoders, and feature schema used during prediction.
 - `ui/`: Streamlit application for interactive predictions.
-- `serving/`: Reserved serving layer for an API implementation.
+- `serving/`: Reserved API-serving layer.
+- `validation/`: Input-schema validation checks for the raw source dataset.
 - `requirements.txt`: Python package dependencies.
-- `check_imports.py`: Simple dependency/import verification script.
+- `check_imports.py`: Dependency verification script.
 
 ---
 
 ## 4. Technology Stack
 
-- Python 3.10 or newer
+- Python 3.10+
 - Pandas — data loading and transformation
 - NumPy — numerical operations
-- Scikit-learn — preprocessing, models, metrics, and train/validation split
+- Scikit-learn — preprocessing, models, metrics, and validation split
 - XGBoost — gradient-boosted classification model
-- Joblib — model and encoder serialization
+- Joblib — model serialization
 - Streamlit — interactive user interface
-- Matplotlib and Seaborn — charts and confusion matrices
+- Matplotlib and Seaborn — charting and evaluation plots
+- SQLite — feature-store persistence
+- MLflow — experiment tracking, parameters, tags, metrics, and model logging
 - FastAPI and Uvicorn — reserved API-serving dependencies
-- MLflow — available for future experiment tracking
 
 ---
 
 ## 5. Environment Setup
 
-The commands below are for Windows PowerShell and should be executed from the project root.
+The commands below are for Windows PowerShell and were used from the project root.
 
 ### Step 1: Open the project directory
 
@@ -108,41 +125,118 @@ The commands below are for Windows PowerShell and should be executed from the pr
 cd "C:\Kapil\BITS Mini Project\REP"
 ```
 
-### Step 2: Create a virtual environment
-
-```powershell
-py -3 -m venv .venv
-```
-
-If the environment already exists, this step can be skipped.
-
-### Step 3: Activate the virtual environment
+### Step 2: Activate the existing virtual environment
 
 ```powershell
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned
-.\.venv\Scripts\Activate.ps1
+(& "C:\Kapil\BITS Mini Project\REP\.venv-1\Scripts\Activate.ps1")
 ```
 
-After activation, the PowerShell prompt should show `(.venv)`.
-
-### Step 4: Install dependencies
+### Step 3: Install or upgrade dependencies
 
 ```powershell
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 ```
 
-### Step 5: Check imports
+### Step 4: Verify imports
 
 ```powershell
 python check_imports.py
 ```
 
-The command should print the Python executable and the detected versions of packages such as Seaborn and XGBoost.
+### Step 5: Validate raw data before training
+
+```powershell
+& "C:\Kapil\BITS Mini Project\REP\.venv-1\Scripts\python.exe" "C:\Kapil\BITS Mini Project\REP\validation\validate_data.py" --data "data\NYC_Train.csv"
+```
+
+This validation step checks required columns, timestamps, missing target values, and non-negative fields before model training.
 
 ---
 
-## 6. Step-by-Step Data and Model Implementation
+## 6. Current Feature-Store Workflow
+
+The project now uses a centralized feature-engineering flow:
+
+1. Build the feature store from the raw CSV.
+2. Train models from the SQLite feature store rather than directly from raw CSV files.
+3. Log metrics and metadata to MLflow.
+4. Run Streamlit for interactive prediction.
+
+### Build the feature store
+
+```powershell
+& "C:\Kapil\BITS Mini Project\REP\.venv-1\Scripts\python.exe" "C:\Kapil\BITS Mini Project\REP\features\build_feature.py"
+```
+
+This creates the SQLite table in `feature_store/feature_store.db` and stores the model-ready feature set.
+
+### Train from the feature store
+
+```powershell
+& "C:\Kapil\BITS Mini Project\REP\.venv-1\Scripts\python.exe" "C:\Kapil\BITS Mini Project\REP\training\train_model_from_store.py"
+```
+
+This script loads feature rows from the feature store, splits them into train/validation sets, compares baseline, Random Forest, and XGBoost models, and saves the trained artifacts.
+
+### Train with MLflow tracking
+
+```powershell
+& "C:\Kapil\BITS Mini Project\REP\.venv-1\Scripts\python.exe" "C:\Kapil\BITS Mini Project\REP\training\mlflow_train_model.py"
+```
+
+This version records:
+
+- model parameters
+- experiment tags such as `git_commit`, `data_file`, and `data_md5`
+- ROC-AUC, accuracy, and macro-F1 metrics
+- MLflow model artifacts for the trained Random Forest and XGBoost models
+
+### Open the MLflow UI
+
+```powershell
+mlflow ui
+```
+
+Or if you want to run it as a Python module:
+
+```powershell
+python -m mlflow ui
+```
+
+---
+
+## 7. Commands Used in This Workspace
+
+These are the commands that were used during the setup and execution of this project in the current environment.
+
+```powershell
+# Activate the environment
+(Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned) ; (& "c:\Kapil\BITS Mini Project\REP\.venv-1\Scripts\Activate.ps1")
+
+# Validate raw data
+& "C:\Kapil\BITS Mini Project\REP\.venv-1\Scripts\python.exe" "C:\Kapil\BITS Mini Project\REP\validation\validate_data.py" --data "data\NYC_Train.csv"
+
+# Syntax check the MLflow training script
+& "c:/Kapil/BITS Mini Project/REP/.venv-1/Scripts/python.exe" -m py_compile "training/mlflow_train_model.py"
+
+# Run the MLflow training workflow
+& "c:/Kapil/BITS Mini Project/REP/.venv-1/Scripts/python.exe" "c:/Kapil/BITS Mini Project/REP/training/mlflow_train_model.py"
+
+# Build the feature store
+& "c:/Kapil/BITS Mini Project/REP/.venv-1/Scripts/python.exe" "c:/Kapil/BITS Mini Project/REP/features/build_feature.py"
+
+# Run the Streamlit app from the project root
+streamlit run app.py
+
+# Or run via the environment explicitly
+& "c:\Kapil\BITS Mini Project\REP\.venv-1\Scripts\python.exe" -m streamlit run ui\app.py
+```
+
+---
+
+## 8. Step-by-Step Data and Model Implementation
 
 ### Step 1: Load the data
 
@@ -249,27 +343,25 @@ Saving the feature order and encoders is important because inference must use th
 
 ---
 
-## 7. Train the Models
+## 9. Train the Models
 
-From the project root, run:
-
-```powershell
-python training\train_model.py
-```
-
-Alternatively, use the virtual-environment interpreter directly:
+From the project root, the main training patterns are:
 
 ```powershell
-.\.venv\Scripts\python.exe training\train_model.py
+# feature-store training path
+& "C:\Kapil\BITS Mini Project\REP\.venv-1\Scripts\python.exe" "C:\Kapil\BITS Mini Project\REP\training\train_model_from_store.py"
+
+# MLflow-enabled training path
+& "C:\Kapil\BITS Mini Project\REP\.venv-1\Scripts\python.exe" "C:\Kapil\BITS Mini Project\REP\training\mlflow_train_model.py"
 ```
 
-The command prints data-cleaning information, target distribution, model metrics, classification reports, and the model-comparison table.
+The MLflow script logs metrics and artifacts to the local MLflow tracking server, while the feature-store variant retains the same baseline, Random Forest, and XGBoost evaluation logic.
 
 Run training before starting the UI if the model files do not already exist.
 
 ---
 
-## 8. Run the Streamlit Application
+## 10. Run the Streamlit Application
 
 Start the user interface from the project root:
 
@@ -303,7 +395,7 @@ Unknown categorical values are handled by the saved encoder and mapped to the co
 
 ---
 
-## 9. Optional Streamlit Commands
+## 11. Optional Streamlit Commands
 
 Run on a different port:
 
@@ -325,7 +417,7 @@ Ctrl+C
 
 ---
 
-## 10. Inference Flow
+## 12. Inference Flow
 
 The prediction process follows this sequence:
 
@@ -353,7 +445,7 @@ This sequence prevents a common production problem: training and inference using
 
 ---
 
-## 11. Expected Model Results
+## 13. Expected Model Results
 
 On the current validation split, the project produced results approximately in the following range:
 
@@ -367,7 +459,7 @@ Exact values can change if the dataset, dependency versions, random seeds, or pr
 
 ---
 
-## 12. Troubleshooting
+## 14. Troubleshooting
 
 ### `ModuleNotFoundError`
 
@@ -431,7 +523,7 @@ If multiple environments exist, run both commands with the same explicit interpr
 
 ---
 
-## 13. Future Improvements
+## 15. Future Improvements
 
 - Add a complete FastAPI endpoint in `serving/api.py`.
 - Add request validation and structured response schemas.
@@ -444,13 +536,13 @@ If multiple environments exist, run both commands with the same explicit interpr
 
 ---
 
-## 14. Important Note
+## 16. Important Note
 
 This model is a decision-support tool, not a replacement for security analysts. Predictions should be reviewed together with the underlying evidence, organizational policies, and incident-response procedures before taking action.
 
 ---
 
-## 15. Reflection Questions
+## 17. Reflection Questions
 
 The following answers apply to the current REP implementation, which trains a Random Forest classifier in `training/train_model.py` and performs inference in `ui/app.py` using saved model artifacts.
 
